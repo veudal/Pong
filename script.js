@@ -1,8 +1,10 @@
 const multiplicator = 1.05
 const lineWidth = 1;
 const maxVelocity = 2;
+let scoreMargin = 128
+let firstPlayerScore = 0
+let secondPlayerScore = 0
 let firstPlayerPos, secondPlayerPos;
-let firstPlayerVelocity = secondPlayerVelocity = 0
 let padHeight;
 let padWidth;
 let padMargin;
@@ -11,10 +13,10 @@ var keysPressed = {};
 let ball = {
   x: 0,
   y: 0,
-  radius: 30,
+  radius: 1,
   velocity: {
-    x: 1.5,
-    y:  Math.random() * 2
+    x: 0,
+    y: 0
   }
 };
 
@@ -23,74 +25,55 @@ document.addEventListener("DOMContentLoaded", (event) => {
     const canvas = document.getElementById("canvas")
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
-    padHeight = canvas.height / 8; //To 8
+    padHeight = canvas.height / 8; 
     padMargin = padHeight / 3;
     padWidth = padHeight / 5;
-    firstPlayerPos = secondPlayerPos = (canvas.height / 2) - (padHeight / 2);
-
-    ball.x = canvas.width / 2
-    ball.y = canvas.height / 2
-
-    if(Math.random() > 0.5){
-      ball.velocity.x = -ball.velocity.x
-      toggle = true
-    }
-    if(Math.random() > 0.5){
-      ball.velocity.y = -ball.velocity.y
-    }
-
+    ball.radius = canvas.width / 64
 
     var ctx = canvas.getContext('2d');
     ctx.fillStyle = "white"
-
-    drawGameState(ctx);
-    setTimeout(function() {
-      setInterval(function(){
+    startGame(canvas)
+    setInterval(function(){
         update(ctx), 16
-      });
-    }, 250); //To 1000
+    });
 })
 
 
 document.addEventListener('keydown', function(event) {
   let key = event.key.toUpperCase();
   keysPressed[key] = true;
-
-  let direction
-  if(key == "ARROWUP" || key == "W"){
-    direction = "up"  
-  }
-  else{
-    direction = "down"
-  }
-  if(key == "W" || key == "S"){
-    firstPlayerVelocity = handlePlayerMovement(firstPlayerVelocity, direction);
-  }
-  else{
-    secondPlayerVelocity = handlePlayerMovement(secondPlayerVelocity, direction);
-  }
-
 });
 
 
-function handlePlayerMovement(playerVelocity, direction) {
-  if (direction == "up") {
-      if (playerVelocity > 0) {
-          playerVelocity = 0;
-      }
-      if (playerVelocity > -maxVelocity) {
-          playerVelocity -= 1;
-      }
-  } else if (direction == "down") {
-      if (playerVelocity < 0) {
-          playerVelocity = 0;
-      }
-      if (playerVelocity < maxVelocity) {
-          playerVelocity += 1;
-      }
-  }
-  return playerVelocity
+function prepareGame(canvas) {
+
+  firstPlayerPos = secondPlayerPos = (canvas.height / 2) - (padHeight / 2);
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.velocity.x = 0
+  ball.velocity.y = 0
 }
+
+function startGame() {
+
+  prepareGame(canvas)
+  setTimeout(function(){
+
+    ball.velocity.x = 1.5
+    ball.velocity.y = Math.random() * 2
+    if (Math.random() > 0.5) {
+      ball.velocity.x = -ball.velocity.x;
+      toggle = true;
+    }
+    else {
+      toggle = false
+    }
+    if (Math.random() > 0.5) {
+      ball.velocity.y = -ball.velocity.y;
+    }
+  }, 1000)
+}
+
 
 document.addEventListener('keyup', function(event) {
   let key = event.key.toUpperCase();
@@ -112,12 +95,6 @@ function checkPos(pos) {
 
 function update(ctx){
 
-    firstPlayerVelocity += Math.sign(firstPlayerVelocity) * (-0.05)
-    secondPlayerVelocity += Math.sign(secondPlayerVelocity) * (-0.05)
-
-    console.log(firstPlayerVelocity)
-    console.log(secondPlayerVelocity)
-
     updatePads()
     updateBall()
     drawGameState(ctx);
@@ -126,38 +103,61 @@ function update(ctx){
 function drawGameState(ctx) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawCircle(ctx, ball.x, ball.y, ball.radius);
+  drawScore(ctx)
   ctx.fillRect(canvas.width / 2 - lineWidth, 0, lineWidth, canvas.height);
   ctx.fillRect(padMargin, firstPlayerPos, padWidth, padHeight);
   ctx.fillRect(canvas.width - padMargin - padWidth, secondPlayerPos, padWidth, padHeight);
 }
 
+function drawScore(ctx) {
+  ctx.font = "64px 'copperplate', Fantasy";
+
+  const canvasCenterX = canvas.width / 2;
+  const textMetrics1 = ctx.measureText(firstPlayerScore);
+  const textWidth = textMetrics1.width;
+
+  const scoreTextMargin1 = canvasCenterX - textWidth - scoreMargin;
+  const scoreTextMargin2 = canvasCenterX + scoreMargin;
+
+  ctx.fillText(firstPlayerScore, scoreTextMargin1, scoreMargin / 1.5);
+  ctx.fillText(secondPlayerScore, scoreTextMargin2, scoreMargin / 1.5);
+}
+
 function updateBall(){
 
-
+  //Bottom and top
   var maxY = canvas.height - ball.radius;
   if(ball.y > maxY || ball.y < ball.radius){
     ball.velocity.y = -ball.velocity.y;
   }
 
   //Left pad
-  if(toggle == true && ball.x > padMargin + padWidth && ball.x < ball.radius + padWidth + padMargin && ball.y > firstPlayerPos - ball.radius && ball.y < firstPlayerPos + padHeight + ball.radius){
+  if(toggle == true && ball.x > padMargin + padWidth - ball.radius && ball.x < ball.radius + padWidth + padMargin && ball.y > firstPlayerPos - ball.radius && ball.y < firstPlayerPos + padHeight + ball.radius){
     ball.velocity.x = -ball.velocity.x * multiplicator;
-    ball.velocity.y = -ball.velocity.y * multiplicator;
+    let difference = firstPlayerPos + padHeight / 2 - ball.y
+    ball.velocity.y = -ball.velocity.y - difference / 50;
     toggle = !toggle;
   }
 
   //Right pad
-  if(toggle == false && ball.x < canvas.width - padMargin - padWidth && ball.x > canvas.width - padWidth - padMargin - ball.radius && ball.y > secondPlayerPos - ball.radius && ball.y < secondPlayerPos + padHeight + ball.radius){
+  if(toggle == false && ball.x < canvas.width - padMargin - padWidth + ball.radius && ball.x > canvas.width - padWidth - padMargin - ball.radius && ball.y > secondPlayerPos - ball.radius && ball.y < secondPlayerPos + padHeight + ball.radius){
     ball.velocity.x = -ball.velocity.x * multiplicator;
-    ball.velocity.y = -ball.velocity.y * multiplicator;
+    let difference = secondPlayerPos + padHeight / 2 - ball.y
+    ball.velocity.y = -ball.velocity.y - difference / 50;
     toggle = !toggle;
   }
 
+  //Goal for first player
+  var maxX = canvas.width + ball.radius * 2;
+  if(ball.x > maxX){
+    firstPlayerScore++
+    startGame()
+  }
 
-  var maxX = canvas.width - ball.radius;
-  if(ball.x > maxX || ball.x < ball.radius){
-    ball.velocity.x = -ball.velocity.x;
-    //GOAL
+  //Goal for second player
+  if(ball.x < -ball.radius * 2) {
+    secondPlayerScore++
+    startGame()
   }
 
   ball.x += ball.velocity.x
@@ -168,20 +168,22 @@ function updateBall(){
 
 function updatePads(){
 
-  if (keysPressed["W"]) {
-    firstPlayerPos = firstPlayerPos + firstPlayerVelocity - 2;
+  if(ball.velocity.x != 0){
+    if (keysPressed["W"]) {
+      firstPlayerPos = firstPlayerPos - 2;
+    }
+    if (keysPressed["S"]) {
+      firstPlayerPos = firstPlayerPos + 2;
+    }
+    if (keysPressed["ARROWUP"]) {
+      secondPlayerPos = secondPlayerPos - 2;
+    }
+    if (keysPressed["ARROWDOWN"]) {
+      secondPlayerPos = secondPlayerPos + 2;
+    }
+    firstPlayerPos = checkPos(firstPlayerPos)
+    secondPlayerPos = checkPos(secondPlayerPos)
   }
-  if (keysPressed["S"]) {
-    firstPlayerPos = firstPlayerPos + firstPlayerVelocity + 2;
-  }
-  if (keysPressed["ARROWUP"]) {
-    secondPlayerPos = secondPlayerPos + secondPlayerVelocity - 2;
-  }
-  if (keysPressed["ARROWDOWN"]) {
-    secondPlayerPos = secondPlayerPos + secondPlayerVelocity + 2;
-  }
-  firstPlayerPos = checkPos(firstPlayerPos)
-  secondPlayerPos = checkPos(secondPlayerPos)
 }
 
 function drawCircle(ctx, x, y, radius) {
