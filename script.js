@@ -87,6 +87,11 @@ document.addEventListener('keyup', function(event) {
   keysPressed[key] = false
 })
 
+document.addEventListener('keypress', function(event) {
+  let key = event.key.toUpperCase()
+  keysPressed[key] = true
+})
+
 function prepareGame(canvas) {
 
   firstPlayerPos = secondPlayerPos = (canvas.height / 2) - (padHeight / 2)
