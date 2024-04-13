@@ -1,14 +1,24 @@
-const multiplicator = 1.05
+const speedMultiplier = 1.05
 const lineWidth = 3
 const padSpeed = 2
-let touchList = {}
-let scoreMargin = 128
-let firstPlayerScore = 0
-let secondPlayerScore = 0
-let firstPlayerPos, secondPlayerPos
-let padHeight, padWidth, padMargin
-let toggle = false
+const startDelay = 1000
 const keysPressed = {}
+const yVelocityFactor = 50
+const scoreMargin = 128
+let canvas
+let touchList = {}
+const players = {
+  firstPlayerScore: 0,
+  secondPlayerScore: 0,
+  firstPlayerPos: 0,
+  secondPlayerPos: 0,
+  firstPlayerTouchY: -1,
+  secondPlayerTouchY: -1,
+  padHeight: 0,
+  padWidth: 0,
+  padMargin: 0,
+  padToggle: false
+}
 const ball = {
   x: 0,
   y: 0,
@@ -18,83 +28,95 @@ const ball = {
 
 document.addEventListener("DOMContentLoaded", (event) => {
 
-    const canvas = document.getElementById("canvas")
-    canvas.width = window.innerWidth
-    canvas.height = window.innerHeight
-    padHeight = canvas.height / 8 
-    padMargin = padHeight / 3
-    padWidth = padHeight / 5
-    ball.radius = canvas.width / 64
+  canvas = document.getElementById("canvas")
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+  adjustForWindowSize()
+  startGame(canvas)
 
-    var ctx = canvas.getContext('2d')
-    ctx.fillStyle = "white"
-    startGame(canvas)
-    setInterval(function(){
-        update(ctx), 16
-    })
+  let ctx = canvas.getContext('2d')
+  requestAnimationFrame(function () {
+    render(ctx)
+  })
+  setInterval(function () {
+    update()
+  }, 1)
 })
 
-document.addEventListener('touchstart', (event) => { handleTouch(event.touches, true)})
-document.addEventListener('touchmove', (event) => { handleTouch(event.touches, true)})
-document.addEventListener('touchend', (event) => { handleTouch(event.changedTouches, false)})
+function adjustForWindowSize() {
+
+  canvas.width = window.innerWidth
+  canvas.height = window.innerHeight
+
+  players.padHeight = canvas.height / 8
+  players.padMargin = players.padHeight / 3
+  players.padWidth = players.padHeight / 5
+  ball.radius = canvas.width / 64
+}
+
+window.addEventListener('resize', adjustForWindowSize, false)
+
+document.addEventListener('touchstart', (event) => { startTouch(event.touches) })
+document.addEventListener('touchmove', (event) => { changeTarget(event.touches) })
+document.addEventListener('touchend', (event) => { cancelTarget(event.changedTouches) })
 
 
-function handleTouch(touches, addOrRemove)
-{
+function cancelTarget(touches) {
 
-  let verticalCenter = canvas.height / 2
-  let horizontalCenter = canvas.width / 2
-  for(let i = 0; i < touches.length; i++) {
+  for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
-    if(touch.clientX < horizontalCenter){
-      if(touch.clientY < verticalCenter){
-        keysPressed["W"] = addOrRemove
-        if(addOrRemove){
-          keysPressed["S"] = false
-        }
-      }
-      else {
-        keysPressed["S"] = addOrRemove
-        if(addOrRemove){
-          keysPressed["W"] = false
-        }
-      }
+    if(touches.length == 1){
+      players.firstPlayerTouchY = -1
+      players.secondPlayerTouchY = -1
+    }
+    else if (touch.clientX < canvas.width / 2) {
+      players.firstPlayerTouchY = -1
     }
     else {
-        if(touch.clientY < verticalCenter){
-          keysPressed["ARROWUP"] = addOrRemove
-          if(addOrRemove){
-            keysPressed["ARROWDOWN"] = false
-          }
-        }
-        else {
-          keysPressed["ARROWDOWN"] = addOrRemove
-          if(addOrRemove){
-            keysPressed["ARROWUP"] = false
-          }
-        }
+      players.secondPlayerTouchY = -1
     }
   }
 }
 
-document.addEventListener('keydown', function(event) {
-  let key = event.key.toUpperCase()
-  keysPressed[key] = true
-})
+function changeTarget(touches) {
 
-document.addEventListener('keyup', function(event) {
-  let key = event.key.toUpperCase()
-  keysPressed[key] = false
-})
+  let horizontalCenter = canvas.width / 2
+  for (let i = 0; i < touches.length; i++) {
+    let touch = touches[i]
+    if (touch.clientX < horizontalCenter) {
+      players.firstPlayerTouchY = touch.clientY
+    }
+    else {
+      players.secondPlayerTouchY = touch.clientY
+    }
+  }
+}
 
-document.addEventListener('keypress', function(event) {
+function startTouch(touches) {
+
+  let horizontalCenter = canvas.width / 2
+  for (let i = 0; i < touches.length; i++) {
+    let touch = touches[i]
+    if (touch.clientX < horizontalCenter) {
+      players.firstPlayerTouchY = touch.clientY
+    }
+    else {
+      players.secondPlayerTouchY = touch.clientY
+    }
+  }
+}
+
+document.addEventListener('keydown', handleKeyEvent)
+document.addEventListener('keyup', handleKeyEvent)
+
+function handleKeyEvent(event) {
   let key = event.key.toUpperCase()
-  keysPressed[key] = true
-})
+  keysPressed[key] = (event.type === 'keydown')
+}
 
 function prepareGame(canvas) {
 
-  firstPlayerPos = secondPlayerPos = (canvas.height / 2) - (padHeight / 2)
+  players.firstPlayerPos = players.secondPlayerPos = (canvas.height / 2) - (players.padHeight / 2)
   ball.x = canvas.width / 2
   ball.y = canvas.height / 2
   ball.velocity.x = 0
@@ -104,43 +126,53 @@ function prepareGame(canvas) {
 function startGame() {
 
   prepareGame(canvas)
-  setTimeout(function(){
+  setTimeout(function () {
 
     ball.velocity.x = 1.5
     ball.velocity.y = Math.random() * 2
-    if (Math.random() > 0.5) {
+    let rnd = Math.random() > 0.5
+    if (rnd) {
       ball.velocity.x = -ball.velocity.x
-      toggle = true
-    }
-    else {
-      toggle = false
+      players.padToggle = rnd
     }
     if (Math.random() > 0.5) {
       ball.velocity.y = -ball.velocity.y
     }
-  }, 1000)
+  }, startDelay)
 }
-   
+
 function checkPos(pos) {
 
-  const max = canvas.height - padHeight
+  const max = canvas.height - players.padHeight
   return Math.min(Math.max(pos, 0), max)
 }
 
-function update(ctx){
+function update() {
 
-    updatePads()
-    updateBall()
-    drawGameState(ctx)
+  updatePads()
+  updateBall()
+}
+
+function render(ctx) {
+
+  drawGameState(ctx)
+  requestAnimationFrame(function () {
+    render(ctx)
+  })
 }
 
 function drawGameState(ctx) {
+  ctx.fillStyle = "white"
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  drawCircle(ctx, ball.x, ball.y, ball.radius)
-  drawScore(ctx)
   drawDashLine(ctx)
-  ctx.fillRect(padMargin, firstPlayerPos, padWidth, padHeight)
-  ctx.fillRect(canvas.width - padMargin - padWidth, secondPlayerPos, padWidth, padHeight)
+  drawScore(ctx)
+  drawBall(ctx, ball.x, ball.y, ball.radius)
+  drawPads(ctx)
+}
+
+function drawPads(ctx) {
+  ctx.fillRect(players.padMargin, players.firstPlayerPos, players.padWidth, players.padHeight)
+  ctx.fillRect(canvas.width - players.padMargin - players.padWidth, players.secondPlayerPos, players.padWidth, players.padHeight)
 }
 
 function drawDashLine(ctx) {
@@ -157,88 +189,134 @@ function drawScore(ctx) {
   ctx.font = "48px 'Pixel', Fantasy"
 
   const canvasCenterX = canvas.width / 2
-  const textMetrics1 = ctx.measureText(firstPlayerScore)
+  const textMetrics1 = ctx.measureText(players.firstPlayerScore)
   const textWidth = textMetrics1.width
 
   const scoreTextMargin1 = canvasCenterX - textWidth - scoreMargin
   const scoreTextMargin2 = canvasCenterX + scoreMargin
 
-  ctx.fillText(firstPlayerScore, scoreTextMargin1, scoreMargin / 1.5)
-  ctx.fillText(secondPlayerScore, scoreTextMargin2, scoreMargin / 1.5)
+  ctx.fillText(players.firstPlayerScore, scoreTextMargin1, scoreMargin / 1.5)
+  ctx.fillText(players.secondPlayerScore, scoreTextMargin2, scoreMargin / 1.5)
 }
 
-function updateBall(){
-
-  //Bottom and top
-  var maxY = canvas.height - ball.radius
-  if(ball.y > maxY || ball.y < ball.radius){
-    playSound("collision")
-    ball.velocity.y = -ball.velocity.y
-  }
-
-  //Left pad
-  if(toggle == true && ball.x > padMargin + padWidth - ball.radius && ball.x < ball.radius + padWidth + padMargin && ball.y > firstPlayerPos - ball.radius && ball.y < firstPlayerPos + padHeight + ball.radius){
-    playSound("hit")
-    ball.velocity.x = -ball.velocity.x * multiplicator
-    let difference = firstPlayerPos + padHeight / 2 - ball.y
-    ball.velocity.y = -ball.velocity.y - difference / 50
-    toggle = !toggle
-  }
-
-  //Right pad
-  if(toggle == false && ball.x < canvas.width - padMargin - padWidth + ball.radius && ball.x > canvas.width - padWidth - padMargin - ball.radius && ball.y > secondPlayerPos - ball.radius && ball.y < secondPlayerPos + padHeight + ball.radius){
-    playSound("hit")
-    ball.velocity.x = -ball.velocity.x * multiplicator
-    let difference = secondPlayerPos + padHeight / 2 - ball.y
-    ball.velocity.y = -ball.velocity.y - difference / 50
-    toggle = !toggle
-  }
-
-  //Goal for first player
-  if(ball.x > canvas.width + ball.radius * 2){
-    firstPlayerScore++
-    playSound("goal")
-    startGame()
-  }
-
-  //Goal for second player
-  if(ball.x < -ball.radius * 2) {
-    secondPlayerScore++
-    playSound("goal")
-    startGame()
-  }
-
-  ball.x += ball.velocity.x
-  ball.y += ball.velocity.y
-}
-
-function updatePads(){
-
-  if(ball.velocity.x != 0){
-    if (keysPressed["W"]) {
-      firstPlayerPos = firstPlayerPos - padSpeed
-    }
-    if (keysPressed["S"]) {
-      firstPlayerPos = firstPlayerPos + padSpeed
-    }
-    if (keysPressed["ARROWUP"]) {
-      secondPlayerPos = secondPlayerPos - padSpeed
-    }
-    if (keysPressed["ARROWDOWN"]) {
-      secondPlayerPos = secondPlayerPos + padSpeed
-    }
-    firstPlayerPos = checkPos(firstPlayerPos)
-    secondPlayerPos = checkPos(secondPlayerPos)
-  }
-}
-
-function drawCircle(ctx, x, y, radius) {
-    ctx.beginPath()
-    ctx.arc(x, y, radius, 0, 2 * Math.PI, false)
-    ctx.fill()
+function drawBall(ctx, x, y, radius) {
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, 2 * Math.PI, false)
+  ctx.fill()
 }
 
 function playSound(sound) {
-    var audio = document.getElementById(sound)
-    audio.play()
+  var audio = document.getElementById(sound)
+  audio.volume = 0.25
+  audio.play()
+}
+
+function updateBall() {
+  let wallBounce = false;
+
+  function checkWallCollision() {
+    const maxY = canvas.height - ball.radius;
+    if (ball.y > maxY || ball.y < ball.radius) {
+      playSound("collision");
+      ball.velocity.y = -ball.velocity.y;
+      wallBounce = true;
+    }
+  }
+
+  function checkPadCollision() {
+    if (players.padToggle) {
+      checkLeftPadCollision();
+    } else {
+      checkRightPadCollision();
+    }
+  }
+
+  function checkLeftPadCollision() {
+    if (
+      ball.x > players.padMargin + players.padWidth - ball.radius &&
+      ball.x < ball.radius + players.padWidth + players.padMargin &&
+      ball.y > players.firstPlayerPos - ball.radius &&
+      ball.y < players.firstPlayerPos + players.padHeight + ball.radius
+    ) {
+      playSound("hit");
+      ball.velocity.x = -ball.velocity.x * speedMultiplier;
+      const difference = players.firstPlayerPos + players.padHeight / 2 - ball.y;
+      ball.velocity.y = -ball.velocity.y - difference / yVelocityFactor;
+      players.padToggle = !players.padToggle;
+    }
+  }
+
+  function checkRightPadCollision() {
+    if (
+      ball.x < canvas.width - players.padMargin - players.padWidth + ball.radius &&
+      ball.x > canvas.width - players.padWidth - players.padMargin - ball.radius &&
+      ball.y > players.secondPlayerPos - ball.radius &&
+      ball.y < players.secondPlayerPos + players.padHeight + ball.radius
+    ) {
+      playSound("hit");
+      ball.velocity.x = -ball.velocity.x * speedMultiplier;
+      const difference = players.secondPlayerPos + players.padHeight / 2 - ball.y;
+      ball.velocity.y = -ball.velocity.y - difference / yVelocityFactor;
+      players.padToggle = !players.padToggle;
+    }
+  }
+
+  function checkGoal() {
+    if (ball.x > canvas.width + ball.radius * 2) {
+      players.firstPlayerScore++;
+      playSound("goal");
+      startGame();
+    } else if (ball.x < -ball.radius * 2) {
+      players.secondPlayerScore++;
+      playSound("goal");
+      startGame();
+    }
+  }
+
+  function updateBall() {
+    ball.x += ball.velocity.x;
+    ball.y += ball.velocity.y;
+  }
+
+  function preventStuckBall() {
+    if (wallBounce) {
+      if (ball.y < canvas.height / 2) {
+        ball.y += 1;
+      } else {
+        ball.y -= 1;
+      }
+    }
+  }
+
+  checkWallCollision();
+  checkPadCollision();
+  checkGoal();
+  updateBall();
+  preventStuckBall();
+}
+
+
+function updatePads() {
+
+  pad1 = players.firstPlayerPos + players.padHeight / 2
+  pad2 = players.secondPlayerPos + players.padHeight / 2
+
+  if (ball.velocity.x != 0) {
+    if (keysPressed["W"] || players.firstPlayerTouchY < pad1 && players.firstPlayerTouchY != -1) {
+      players.firstPlayerPos = players.firstPlayerPos - padSpeed
+      players.firstPlayerPos = checkPos(players.firstPlayerPos)
+    }
+    if (keysPressed["S"] || (players.firstPlayerTouchY > pad1 && players.firstPlayerTouchY != -1)) {
+      players.firstPlayerPos = players.firstPlayerPos + padSpeed
+      players.firstPlayerPos = checkPos(players.firstPlayerPos)
+    }
+    if (keysPressed["ARROWUP"] || players.secondPlayerTouchY < pad2 && players.secondPlayerTouchY != -1) {
+      players.secondPlayerPos = players.secondPlayerPos - padSpeed
+      players.secondPlayerPos = checkPos(players.secondPlayerPos)
+    }
+    if (keysPressed["ARROWDOWN"] || (players.secondPlayerTouchY > pad2 && players.secondPlayerTouchY != -1)) {
+      players.secondPlayerPos = players.secondPlayerPos + padSpeed
+      players.secondPlayerPos = checkPos(players.secondPlayerPos)
+    }
+  }
 }

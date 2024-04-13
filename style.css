@@ -1,13 +1,14 @@
 @font-face {
     font-family: 'Pixel';
-    src: url('./fonts/FONT.ttf') format('truetype');
+    src: url('./fonts/pixel.ttf') format('truetype');
   }
 
 * { margin: 0; padding: 0;}
 
-body, html { height:100%; }
+body, html {
+  height: 100% !important;
+}
 
 #canvas {
-    position:absolute;
-
+    position: absolute;
 }
