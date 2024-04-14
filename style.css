@@ -6,7 +6,9 @@
 * { margin: 0; padding: 0;}
 
 body, html {
-  height: 100% !important;
+  height: 100%;
+  overflow: hidden;
+  touch-action: none;
 }
 
 #canvas {
