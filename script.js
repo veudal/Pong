@@ -6,6 +6,7 @@ const keysPressed = {}
 const yVelocityFactor = 50
 const scoreMargin = 128
 let canvas
+let touchList = []
 const players = {
   firstPlayerScore: 0,
   secondPlayerScore: 0,
@@ -55,20 +56,17 @@ function adjustForWindowSize() {
 
 window.addEventListener('resize', adjustForWindowSize, false)
 
-document.addEventListener('touchstart', (event) => { startTouch(event.touches) })
-document.addEventListener('touchmove', (event) => { changeTarget(event.touches) })
-document.addEventListener('touchend', (event) => { cancelTarget(event.changedTouches) })
+document.addEventListener('touchstart', (event) => { startTouch(event.touches, event.target.id) })
+document.addEventListener('touchmove', (event) => { changeTarget(event.touches, event.target.id) })
+document.addEventListener('touchend', (event) => { cancelTarget(event.changedTouches, event.target.id) })
 
 
 function cancelTarget(touches, id) {
 
+  delete touchList[id]
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
-    if(touches.length == 1){
-      players.firstPlayerTouchY = -1
-      players.secondPlayerTouchY = -1
-    }
-    else if (touch.clientX < canvas.width / 2) {
+   if (touch.clientX < canvas.width / 2) {
       players.firstPlayerTouchY = -1
     }
     else {
@@ -77,29 +75,29 @@ function cancelTarget(touches, id) {
   }
 }
 
-function changeTarget(touches) {
-
-  let horizontalCenter = canvas.width / 2
+function changeTarget(touches, id) {
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
-    if (touch.clientX < horizontalCenter) {
+    if (touchList[id] == 1) {
       players.firstPlayerTouchY = touch.clientY
     }
-    else {
+    if(touchList[id] == 2){
       players.secondPlayerTouchY = touch.clientY
     }
   }
 }
 
-function startTouch(touches) {
+function startTouch(touches, id) {
 
   let horizontalCenter = canvas.width / 2
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
     if (touch.clientX < horizontalCenter) {
+      touchList[id] = 1
       players.firstPlayerTouchY = touch.clientY
     }
     else {
+      touchList[id] = 2
       players.secondPlayerTouchY = touch.clientY
     }
   }
@@ -132,8 +130,8 @@ function startGame() {
     let rnd = Math.random() > 0.5
     if (rnd) {
       ball.velocity.x = -ball.velocity.x
-      players.padToggle = rnd
     }
+    players.padToggle = rnd
     if (Math.random() > 0.5) {
       ball.velocity.y = -ball.velocity.y
     }
