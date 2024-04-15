@@ -56,42 +56,49 @@ function adjustForWindowSize() {
 
 window.addEventListener('resize', adjustForWindowSize, false)
 
-document.addEventListener('touchstart', (event) => { startTouch(event.touches, event.target.id) })
-document.addEventListener('touchmove', (event) => { changeTarget(event.touches, event.target.id) })
-document.addEventListener('touchend', (event) => { cancelTarget(event.changedTouches, event.target.id) })
+document.addEventListener('touchstart', (event) => { startTouch(event.touches,) })
+document.addEventListener('touchmove', (event) => { changeTarget(event.touches) })
+document.addEventListener('touchend', (event) => { cancelTarget(event.changedTouches) })
 
 
-function cancelTarget(touches, id) {
+function cancelTarget(touches) {
 
-  delete touchList[id]
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
-   if (touch.clientX < canvas.width / 2) {
+    let id = touch.identifier
+    delete touchList[id]
+    if (touch.clientX < canvas.width / 2) {
       players.firstPlayerTouchY = -1
     }
     else {
       players.secondPlayerTouchY = -1
     }
   }
+  if(touches.length < 2){
+    players.firstPlayerTouchY = -1
+    players.secondPlayerTouchY = -1
+  }
 }
 
-function changeTarget(touches, id) {
+function changeTarget(touches) {
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
+    let id = touch.identifier
     if (touchList[id] == 1) {
       players.firstPlayerTouchY = touch.clientY
     }
-    if(touchList[id] == 2){
+    else if(touchList[id] == 2){
       players.secondPlayerTouchY = touch.clientY
     }
   }
 }
 
-function startTouch(touches, id) {
+function startTouch(touches) {
 
   let horizontalCenter = canvas.width / 2
   for (let i = 0; i < touches.length; i++) {
     let touch = touches[i]
+    let id = touch.identifier
     if (touch.clientX < horizontalCenter) {
       touchList[id] = 1
       players.firstPlayerTouchY = touch.clientY
